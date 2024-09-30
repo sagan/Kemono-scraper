@@ -3,11 +3,13 @@ package kemono
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/elvis972602/kemono-scraper/utils"
-	"github.com/spf13/cast"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"time"
+
+	"github.com/elvis972602/kemono-scraper/utils"
+	"github.com/spf13/cast"
 )
 
 type Timestamp struct {
@@ -178,4 +180,13 @@ var SiteMap = map[string]string{
 	"afdian":        "kemono",
 	"onlyfans":      "coomer",
 	"fansly":        "coomer",
+}
+
+func (p *Post) Ext() string {
+	if (strings.Contains(p.Content, "<p>") && strings.Contains(p.Content, "</p>")) ||
+		(strings.Contains(p.Content, "<br>") || strings.Contains(p.Content, "<br/>") ||
+			strings.Contains(p.Content, "<br />")) {
+		return ".html"
+	}
+	return ".txt"
 }

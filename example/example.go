@@ -25,7 +25,7 @@ func main() {
 		// you can use save path rule to control it
 		downloader.Async(true),
 		// the file will order by name in <order>-<file name>
-		downloader.SavePath(func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
+		downloader.SavePath(func(creator kemono.Creator, post kemono.Post, i int, attachment *kemono.File) string {
 			var name string
 			if filepath.Ext(attachment.Name) == ".zip" {
 				name = attachment.Name

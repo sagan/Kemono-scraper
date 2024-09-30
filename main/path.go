@@ -17,7 +17,10 @@ const (
 )
 
 const (
-	TmplDefault          = "[" + Service + "]" + Creator + "/" + Post + "/" + Filename + Extension
+	TmplDefault = `[{{.Service}}]{{.Creator}}/{{.Post}}
+{{- if .Filename -}}
+/{{.Filename}}
+{{- end -}}{{.Extension}}`
 	TmplWithPrefixNumber = "[" + Service + "]" + Creator + "/" + Post + "/" + Index + "_" + Filename + Extension
 	TmplIndexNumber      = "[" + Service + "]" + Creator + "/" + Post + "/" + Index + Extension
 )

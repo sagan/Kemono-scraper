@@ -285,24 +285,9 @@ func main() {
 		} else {
 			t = defaultTemp
 		}
-		downloaderOptions = append(downloaderOptions, downloader.SavePath(func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
-			ext := filepath.Ext(attachment.Name)
-			filehash := filepath.Base(attachment.Path)[0 : len(filepath.Base(attachment.Path))-len(filepath.Ext(attachment.Path))]
-			filename := attachment.Name[0 : len(attachment.Name)-len(ext)]
-			// use Path extension if Name extension is empty
-			if ext == "" {
-				ext = filepath.Ext(attachment.Path)
-			}
-			pathConfig := &PathConfig{
-				Service:   creator.Service,
-				Creator:   utils.ValidDirectoryName(creator.Name),
-				Post:      utils.ValidDirectoryName(DirectoryName(post)),
-				Index:     i,
-				Filename:  utils.ValidDirectoryName(filename),
-				Filehash:  utils.ValidDirectoryName(filehash),
-				Extension: ext,
-			}
-			if ext == ".zip" || ext == ".rar" || ext == ".7z" {
+		downloaderOptions = append(downloaderOptions, downloader.SavePath(func(creator kemono.Creator, post kemono.Post, i int, attachment *kemono.File) string {
+			pathConfig := getPathConfig(creator, post, i, attachment)
+			if pathConfig.Extension == ".zip" || pathConfig.Extension == ".rar" || pathConfig.Extension == ".7z" {
 				return ExecutePathTmpl(defaultTemp, pathConfig)
 			} else {
 				return ExecutePathTmpl(t, pathConfig)
@@ -312,24 +297,9 @@ func main() {
 		tmplCache := NewTmplCache()
 		tmplCache.init()
 
-		downloaderOptions = append(downloaderOptions, downloader.SavePath(func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
-			ext := filepath.Ext(attachment.Name)
-			filehash := filepath.Base(attachment.Path)[0 : len(filepath.Base(attachment.Path))-len(filepath.Ext(attachment.Path))]
-			filename := attachment.Name[0 : len(attachment.Name)-len(ext)]
-			// use Path extension if Name extension is empty
-			if ext == "" {
-				ext = filepath.Ext(attachment.Path)
-			}
-			pathConfig := &PathConfig{
-				Service:   creator.Service,
-				Creator:   utils.ValidDirectoryName(creator.Name),
-				Post:      utils.ValidDirectoryName(DirectoryName(post)),
-				Index:     i,
-				Filename:  utils.ValidDirectoryName(filename),
-				Filehash:  utils.ValidDirectoryName(filehash),
-				Extension: ext,
-			}
-			return tmplCache.Execute(getTyp(ext), pathConfig)
+		downloaderOptions = append(downloaderOptions, downloader.SavePath(func(creator kemono.Creator, post kemono.Post, i int, attachment *kemono.File) string {
+			pathConfig := getPathConfig(creator, post, i, attachment)
+			return tmplCache.Execute(getTyp(pathConfig.Extension), pathConfig)
 		}))
 	}
 
@@ -795,4 +765,28 @@ func parasCookieFile(cookieFile string) []*http.Cookie {
 		site = domain
 	}
 	return cookies
+}
+
+func getPathConfig(creator kemono.Creator, post kemono.Post, i int, attachment *kemono.File) *PathConfig {
+	pathConfig := &PathConfig{
+		Service: creator.Service,
+		Creator: utils.ValidDirectoryName(creator.Name),
+		Post:    utils.ValidDirectoryName(DirectoryName(post)),
+		Index:   i,
+	}
+	if attachment != nil {
+		ext := filepath.Ext(attachment.Name)
+		filehash := filepath.Base(attachment.Path)[0 : len(filepath.Base(attachment.Path))-len(filepath.Ext(attachment.Path))]
+		filename := attachment.Name[0 : len(attachment.Name)-len(ext)]
+		// use Path extension if Name extension is empty
+		if ext == "" {
+			ext = filepath.Ext(attachment.Path)
+		}
+		pathConfig.Filename = utils.ValidDirectoryName(filename)
+		pathConfig.Filehash = utils.ValidDirectoryName(filehash)
+		pathConfig.Extension = ext
+	} else {
+		pathConfig.Extension = post.Ext()
+	}
+	return pathConfig
 }

@@ -5,8 +5,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/elvis972602/kemono-scraper/kemono"
-	"github.com/elvis972602/kemono-scraper/utils"
 	"html/template"
 	"io"
 	"net/http"
@@ -15,6 +13,9 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/elvis972602/kemono-scraper/kemono"
+	"github.com/elvis972602/kemono-scraper/utils"
 )
 
 const (
@@ -60,7 +61,7 @@ type downloader struct {
 	minSize int64
 
 	// SavePath return the path to save the file
-	SavePath func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string
+	SavePath func(creator kemono.Creator, post kemono.Post, i int, attachment *kemono.File) string
 	// timeout
 	Timeout time.Duration
 
@@ -184,7 +185,7 @@ func WithProxy(proxy string) DownloadOption {
 	}
 }
 
-func SavePath(savePath func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string) DownloadOption {
+func SavePath(savePath func(creator kemono.Creator, post kemono.Post, i int, attachment *kemono.File) string) DownloadOption {
 	return func(d *downloader) {
 		d.SavePath = savePath
 	}
@@ -197,7 +198,7 @@ func SetLog(log Log) DownloadOption {
 	}
 }
 
-func defaultSavePath(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
+func defaultSavePath(creator kemono.Creator, post kemono.Post, i int, attachment *kemono.File) string {
 	var name string
 	ext := filepath.Ext(attachment.Name)
 	if ext == "" {
@@ -257,33 +258,55 @@ func (d *downloader) WriteContent(creator kemono.Creator, post kemono.Post, cont
 	if !d.content {
 		return nil
 	}
-	path := d.SavePath(creator, post, 0, kemono.File{Path: "content.html", Name: "content.html"})
-	path = filepath.Join(filepath.Dir(path), "content.html")
+	var path string
+	if len(post.Attachments) > 0 {
+		name := "content" + post.Ext()
+		path = d.SavePath(creator, post, 0, &kemono.File{Path: name, Name: name})
+	} else {
+		path = d.SavePath(creator, post, 0, nil)
+	}
+	if _, err := os.Stat(path); err == nil { // file exists
+		return nil
+	}
 	err := os.MkdirAll(filepath.Dir(path), 0755)
 	if err != nil {
 		return err
 	}
-	file, err := os.Create(path)
-	contentTemplate := `<!DOCTYPE html>
+	tmppath := path + ".tmp"
+	if post.Ext() == ".html" {
+		contentTemplate := `<!DOCTYPE html>
 <html>
-<head>
-    <title>{{ .Title }}</title>
-</head>
-<body>
-    {{ .Content }}
-</body>
+	<head>
+		<title>{{ .Title }}</title>
+	</head>
+	<body>{{ .Content }}</body>
 </html>`
-	tmpl, err := template.New("content").Parse(contentTemplate)
-	if err != nil {
-		return err
+		tmpl, err := template.New("content").Parse(contentTemplate)
+		if err != nil {
+			return err
+		}
+		file, err := os.Create(tmppath)
+		if err != nil {
+			return err
+		}
+		err = tmpl.Execute(file, struct {
+			Title   string
+			Content template.HTML
+		}{
+			Title:   post.Title,
+			Content: template.HTML(content),
+		})
+		file.Close()
+		if err != nil {
+			return err
+		}
+	} else {
+		err := os.WriteFile(tmppath, []byte(content), 0655)
+		if err != nil {
+			return err
+		}
 	}
-	return tmpl.Execute(file, struct {
-		Title   string
-		Content template.HTML
-	}{
-		Title:   post.Title,
-		Content: template.HTML(content),
-	})
+	return os.Rename(tmppath, path)
 }
 
 func (d *downloader) Download(files <-chan kemono.FileWithIndex, creator kemono.Creator, post kemono.Post) <-chan error {
@@ -306,7 +329,7 @@ func (d *downloader) Download(files <-chan kemono.FileWithIndex, creator kemono.
 						if err != nil {
 							hash = ""
 						}
-						savePath := d.SavePath(creator, post, file.Index, file.File)
+						savePath := d.SavePath(creator, post, file.Index, &file.File)
 
 						if err := d.download(savePath, url, hash); err != nil {
 							errCh <- err

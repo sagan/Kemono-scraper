@@ -3,12 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/mattn/go-colorable"
-	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/mattn/go-colorable"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -135,7 +136,7 @@ func init() {
 	flag.StringVar(&videoTemplate, "video-template", "", "video template, e.g. <ks:creator>/<ks:post>/<ks:filename><ks:extension>")
 	flag.StringVar(&audioTemplate, "audio-template", "", "audio template, e.g. <ks:creator>/<ks:post>/<ks:filename><ks:extension>")
 	flag.StringVar(&archiveTemplate, "archive-template", "", "archive template, e.g. <ks:creator>/<ks:post>/<ks:filename><ks:extension>")
-	flag.BoolVar(&content, "content", false, "if download post content")
+	flag.BoolVar(&content, "content", true, "if download post content")
 	flag.BoolVar(&async, "async", false, "if download posts asynchronously, may cause the file order is not the same as the post order, can be used with --with-prefix-number, default false")
 	flag.StringVar(&maxSize, "max-size", "", "max size, e.g. 10 MB, 1 GB")
 	flag.StringVar(&minSize, "min-size", "", "min size, e.g. 10 MB, 1 GB")
